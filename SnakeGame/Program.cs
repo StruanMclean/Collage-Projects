@@ -1,4 +1,6 @@
-﻿public enum Direction
+﻿using Microsoft.Data.Sqlite;
+
+public enum Direction
 {
     UP,
     DOWN,
@@ -26,19 +28,36 @@ namespace SnakeGame
         private int score;
         private Snake snake;
         private Food food;
+        private bool deid;
+        private ScoreDatabase scoreDatabase;
 
         public void StartGame()
         {
             snake = new Snake(width / 2, height / 2);
             food = new Food(width, height);
+            scoreDatabase = new ScoreDatabase();
             score = 0;
+            deid = false;
 
             while (true) 
             {
-                Input();
-                snake.Move();
-                Draw();
-                Thread.Sleep(300);
+                if (deid) 
+                {
+                    Console.Clear();
+                    Console.WriteLine("You are deid");
+                    Console.WriteLine($"Your final amount of 🟥 is {score}");
+                    scoreDatabase.AddScore(score);
+                    DisplayScores();
+                    break;
+                } 
+                else 
+                {
+                    Input();
+                    snake.Move();
+                    Draw();
+                    GameLogic();
+                    Thread.Sleep(200);
+                }
             }
         }
 
@@ -101,7 +120,34 @@ namespace SnakeGame
             for (int i = 0; i < width; i++) Console.Write("🟧");
 
             Console.WriteLine();
-            Console.WriteLine($"Score: {score}");
+            Console.WriteLine($"🟥: {score}");
+        }
+
+        public void GameLogic()
+        {
+            // If snake eat food
+            if (snake.SnakePos() == (food.X, food.Y))
+            {
+                snake.AddToSnakeTail();
+                food.GenerateNewPosition(width - 2, height - 2);
+                score++;
+            }
+            
+            // If snake eats its self
+            if (snake.EatSelf())
+            {
+                deid = true;
+            }
+        }
+
+        private void DisplayScores()
+        {
+            var scores = scoreDatabase.GetScores();
+            Console.WriteLine("High amount of 🟥:");
+            foreach (var (score, date) in scores)
+            {
+                Console.WriteLine($"🟥 {score} - {date}");
+            }
         }
     }
 
@@ -109,12 +155,14 @@ namespace SnakeGame
     {
        private Queue<(int, int)> board;
        private Direction direction;
+       private bool grow;
 
         public Snake(int startX, int startY)
         {
             board = new Queue<(int, int)>();
             board.Enqueue((startX, startY));
             direction = Direction.RIGHT; // Initial direction (moving right)
+            grow = false;
         }
 
        public void ChangeDirection(Direction newDirection) 
@@ -144,14 +192,32 @@ namespace SnakeGame
             (int newX, int newY) = (x + dx, y + dy);
 
             board.Enqueue((newX, newY));
-            board.Dequeue();
-
-            Console.WriteLine(board);
+            
+            if (!grow) board.Dequeue();
+            else grow = false;
         }
 
         public bool IsSnakePosition(int x, int y)
         {
             return board.Contains((x, y));
+        }
+
+        public (int, int) SnakePos()
+        {
+            return board.Last();
+        }
+
+        public void AddToSnakeTail()
+        {
+            grow = true;
+        }
+
+        public bool EatSelf()
+        {
+            int count = board.Count(item => item == SnakePos());
+
+            if (count > 1) return true;
+            else return false;
         }
     }
 
@@ -171,6 +237,78 @@ namespace SnakeGame
         {
             X = random.Next(0, width);
             Y = random.Next(0, height);
+        }
+    }
+
+    public class ScoreDatabase
+    {
+        private string connectionString = "Data Source=scores.db";
+
+        public ScoreDatabase()
+        {
+            using (var connection = new SqliteConnection(connectionString))
+            {
+                connection.Open();
+
+                var command = connection.CreateCommand();
+                command.CommandText =
+                @"
+                    CREATE TABLE IF NOT EXISTS Scores (
+                        Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        Score INTEGER NOT NULL,
+                        Date TEXT NOT NULL
+                    );
+                ";
+                command.ExecuteNonQuery();
+            }
+        }
+
+        public void AddScore(int score)
+        {
+            using (var connection = new SqliteConnection(connectionString))
+            {
+                connection.Open();
+
+                var command = connection.CreateCommand();
+                command.CommandText =
+                @"
+                    INSERT INTO Scores (Score, Date)
+                    VALUES ($score, $date);
+                ";
+                command.Parameters.AddWithValue("$score", score);
+                command.Parameters.AddWithValue("$date", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+                command.ExecuteNonQuery();
+            }
+        }
+
+        public List<(int Score, string Date)> GetScores()
+        {
+            var scores = new List<(int Score, string Date)>();
+
+            using (var connection = new SqliteConnection(connectionString))
+            {
+                connection.Open();
+
+                var command = connection.CreateCommand();
+                command.CommandText =
+                @"
+                    SELECT Score, Date
+                    FROM Scores
+                    ORDER BY Score DESC;
+                ";
+
+                using (var reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        var score = reader.GetInt32(0);
+                        var date = reader.GetString(1);
+                        scores.Add((score, date));
+                    }
+                }
+            }
+
+            return scores;
         }
     }
 }
