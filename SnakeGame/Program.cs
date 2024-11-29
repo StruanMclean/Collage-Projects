@@ -134,7 +134,14 @@ namespace SnakeGame
             }
             
             // If snake eats its self
-            if (snake.EatSelf())
+            if 
+            (
+                snake.EatSelf() ||
+                snake.SnakePos().Item1 == 0 ||
+                snake.SnakePos().Item1 == width ||
+                snake.SnakePos().Item2 == 0 || 
+                snake.SnakePos().Item2 == height
+            )
             {
                 deid = true;
             }
