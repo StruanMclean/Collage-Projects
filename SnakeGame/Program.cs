@@ -242,8 +242,12 @@ namespace SnakeGame
 
         public void GenerateNewPosition(int width, int height)
         {
-            X = random.Next(0, width);
-            Y = random.Next(0, height);
+            do 
+            {
+                X = random.Next(0, width);
+                Y = random.Next(0, height);
+            }
+            while (X != width / 2 && Y != height / 2);
         }
     }
 
