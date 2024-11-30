@@ -14,6 +14,7 @@ namespace SnakeGame
     {
         static void Main()
         {
+            // Program Start
             Console.CursorVisible = false;
 
             CreateGame game = new CreateGame();
@@ -39,6 +40,7 @@ namespace SnakeGame
             score = 0;
             deid = false;
 
+            // Main Game Loop
             while (true) 
             {
                 if (deid) 
@@ -186,6 +188,8 @@ namespace SnakeGame
 
         public void Move()
         {
+            // Converts Direction enum value to -(X, Y) which will be taken away from snake head
+            // to get new snake head possiton.
             (int x, int y) = board.Last();
             (int dx, int dy) = direction switch
             {
@@ -221,6 +225,7 @@ namespace SnakeGame
 
         public bool EatSelf()
         {
+            // Checks to see if there are two instances of the same (X, Y) of snake
             int count = board.Count(item => item == SnakePos());
 
             if (count > 1) return true;
@@ -242,6 +247,7 @@ namespace SnakeGame
 
         public void GenerateNewPosition(int width, int height)
         {
+            // Checks to make sure apple is not in the initial starting possition of snake
             do 
             {
                 X = random.Next(0, width);
@@ -292,6 +298,7 @@ namespace SnakeGame
             }
         }
 
+        // Lists scores from Least amount of apples to most and returns the list
         public List<(int Score, string Date)> GetScores()
         {
             var scores = new List<(int Score, string Date)>();
